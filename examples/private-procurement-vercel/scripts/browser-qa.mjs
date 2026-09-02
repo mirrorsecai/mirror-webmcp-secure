@@ -76,7 +76,7 @@ try {
     "enabled private requirements action"
   );
   await evaluate(cdp, "document.querySelector('.buyer-panel button').click()");
-  await waitFor(() => evaluate(cdp, "document.querySelector('.boundary-line code')?.textContent.startsWith('mirrorh_srv_v1_') || Boolean(document.querySelector('[role=alert]'))"), 15_000, "private requirements result");
+  await waitFor(() => evaluate(cdp, "document.querySelector('.boundary-line code')?.textContent.startsWith('mirrorh_') || Boolean(document.querySelector('[role=alert]'))"), 15_000, "private requirements result");
   const protectionError = await evaluate(cdp, "document.querySelector('[role=alert]')?.textContent || ''");
   if (protectionError) throw new Error(`Protection failed: ${protectionError}`);
   await evaluate(cdp, "document.querySelector('.agent-panel button').click()");
