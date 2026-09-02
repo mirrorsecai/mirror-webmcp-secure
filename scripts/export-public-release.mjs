@@ -20,6 +20,7 @@ const releaseRoots = [
   "README.md",
   "SECURITY.md",
   "docs/ARCHITECTURE.md",
+  "docs/PUBLIC_PRIVATE_BOUNDARY.md",
   "docs/SITE_OWNER_INTEGRATION.md",
   "examples/private-procurement-vercel",
   "package-lock.json",
@@ -32,8 +33,13 @@ const releaseRoots = [
   "scripts/sync-create-template.mjs",
   "scripts/test-installed-package.mjs",
   "scripts/test-packed-starter.mjs",
-  "src",
-  "tests",
+  "src/auto.js",
+  "src/index.d.ts",
+  "src/index.js",
+  "src/loader.d.ts",
+  "src/loader.js",
+  "src/model-context.js",
+  "tests/loader.test.mjs",
 ];
 
 for (const name of releaseRoots) {
@@ -58,6 +64,9 @@ const secretPatterns = [
   /sk-default-[A-Za-z0-9_-]+/,
   /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/,
   /\/Users\/[A-Za-z0-9._-]+\//,
+  new RegExp("Mirror" + "Client"),
+  new RegExp("protectedMapi" + "ConverseFromText"),
+  new RegExp("mirror_fhe" + "_ffi"),
 ];
 for (const path of files) {
   if ((await stat(path)).size > 2_000_000) continue;

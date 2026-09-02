@@ -36,7 +36,7 @@ export function newSession() {
   return `wmcp_${randomUUID().replaceAll("-", "")}`;
 }
 
-export function sessionCookie(sessionId) {
-  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
-  return `${SESSION_COOKIE}=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=1800${secure}`;
+export function sessionCookie(sessionId, { secure = false } = {}) {
+  const secureAttribute = secure ? "; Secure" : "";
+  return `${SESSION_COOKIE}=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=1800${secureAttribute}`;
 }

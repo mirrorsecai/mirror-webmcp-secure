@@ -8,7 +8,7 @@ const required = [
   "LICENSE",
   "SECURITY.md",
   "docs/ARCHITECTURE.md",
-  "src/runtime.js",
+  "docs/PUBLIC_PRIVATE_BOUNDARY.md",
   "src/model-context.js",
   "src/loader.js",
   "src/auto.js",
@@ -25,8 +25,11 @@ const manifest = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"
 if (manifest.private !== true) throw new Error("The package publish lock must remain enabled before owner approval.");
 if (manifest.dependencies || manifest.peerDependencies) throw new Error("The public package must remain standalone.");
 if (manifest.exports?.["./loader"]?.default !== "./src/loader.js") throw new Error("The loader export is missing.");
+if (manifest.exports?.["./context"] || manifest.files.includes("src/runtime.js") || manifest.files.includes("src/context.js")) {
+  throw new Error("The public package must contain only the endpoint adapter, not the internal browser runtime.");
+}
 const starter = JSON.parse(await readFile(resolve(root, "packages/create-mirror-webmcp/package.json"), "utf8"));
 if (starter.private !== true) throw new Error("The starter package publish lock must remain enabled before owner approval.");
 if (starter.dependencies || starter.peerDependencies) throw new Error("The starter command must not depend on a private package.");
 if (starter.bin?.["create-mirror-webmcp"] !== "./bin/create-mirror-webmcp.mjs") throw new Error("The starter command is missing.");
-console.log("Release repository shape passed. The public package and reference site have no private SDK or WASM dependency.");
+console.log("Release repository shape passed. The public package is a thin endpoint adapter with no private runtime, SDK, or WASM dependency.");

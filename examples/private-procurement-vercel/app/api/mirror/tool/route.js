@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { verifyApproval } from "../../../../lib/approval-token.js";
 import { matchPrivateRequirements } from "../../../../lib/catalog.js";
 import { createSellerHandoff } from "../../../../lib/handoff.js";
 import { verifyProposalToken } from "../../../../lib/proposal-token.js";
@@ -6,16 +7,27 @@ import { runSellerAgent } from "../../../../lib/seller-agent.js";
 import { openServerValue, protectServerValue } from "../../../../lib/server-handle.js";
 import { DEMO_USER_ID, SITE_ID, assertSameOrigin, readSession } from "../../../../lib/server-context.js";
 import { PROCUREMENT_TOOLS } from "../../../../lib/tool-names.js";
+import { proxyMirrorGateway } from "../../../../lib/mirror-gateway-proxy.js";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(request) {
   try {
+    const gateway = await proxyMirrorGateway(request);
+    if (gateway) return gateway;
     const origin = assertSameOrigin(request);
     const sessionId = readSession(request);
     const call = validateCall(await request.json());
     const context = { origin, sessionId, userId: DEMO_USER_ID };
+    if ([PROCUREMENT_TOOLS.release, PROCUREMENT_TOOLS.accept].includes(call.tool)) {
+      verifyApproval(call.approvalToken, {
+        siteId: SITE_ID,
+        ...context,
+        tool: call.tool,
+        arguments: call.arguments
+      });
+    }
     const value = await execute(call.tool, call.arguments, context);
     return Response.json({
       schema: "mirror.webmcp.tool_result.v1",
@@ -152,7 +164,9 @@ function privateResult(descriptor, toolName, publicValue) {
 
 function validateCall(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid tool call.");
-  exactArgs(value, ["schema", "siteId", "tool", "arguments"]);
+  const allowed = new Set(["schema", "siteId", "tool", "arguments", "approvalToken"]);
+  for (const field of Object.keys(value)) if (!allowed.has(field)) throw new Error(`Unexpected field '${field}'.`);
+  for (const field of ["schema", "siteId", "tool", "arguments"]) if (!(field in value)) throw new Error(`Missing field '${field}'.`);
   if (value.schema !== "mirror.webmcp.tool_call.v1" || value.siteId !== SITE_ID) throw new Error("Invalid tool-call envelope.");
   if (!Object.values(PROCUREMENT_TOOLS).includes(value.tool)) throw new Error("Unknown tool.");
   if (!value.arguments || typeof value.arguments !== "object" || Array.isArray(value.arguments)) throw new Error("Invalid tool arguments.");

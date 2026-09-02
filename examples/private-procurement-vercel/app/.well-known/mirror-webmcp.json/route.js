@@ -10,6 +10,7 @@ export async function GET(request) {
     siteId: SITE_ID,
     allowedOrigins: [origin],
     contextEndpoint: "/api/mirror/context",
+    approvalEndpoint: "/api/mirror/approve",
     packs: [{
       name: "procurement.private",
       tools: [

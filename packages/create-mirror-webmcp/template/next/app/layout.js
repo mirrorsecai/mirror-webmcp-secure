@@ -1,8 +1,8 @@
 import "./styles.css";
 
 export const metadata = {
-  title: "Private Procurement | Mirror WebMCP Secure",
-  description: "A two-agent WebMCP transaction that keeps buyer constraints out of agent context."
+  title: "Private Site Tools | Mirror WebMCP Secure",
+  description: "Let agents act on private website data without putting the underlying record in agent context."
 };
 
 export default function RootLayout({ children }) {

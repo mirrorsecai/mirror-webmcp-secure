@@ -1,11 +1,14 @@
 import { protectServerValue } from "../../../../lib/server-handle.js";
 import { DEMO_USER_ID, assertSameOrigin, readSession } from "../../../../lib/server-context.js";
 import { PROCUREMENT_TOOLS } from "../../../../lib/tool-names.js";
+import { proxyMirrorGateway } from "../../../../lib/mirror-gateway-proxy.js";
 
 export const runtime = "nodejs";
 
 export async function POST(request) {
   try {
+    const gateway = await proxyMirrorGateway(request);
+    if (gateway) return gateway;
     const origin = assertSameOrigin(request);
     const sessionId = readSession(request);
     const requirements = validateRequirements(await request.json());

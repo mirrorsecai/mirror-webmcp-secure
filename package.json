@@ -1,10 +1,10 @@
 {
   "name": "@mirror/webmcp-secure",
   "version": "0.2.0-rc.1",
-  "description": "A framework-neutral privacy boundary for WebMCP applications and tools.",
+  "description": "A thin, same-origin WebMCP adapter for private website tools.",
   "private": true,
   "license": "Apache-2.0",
-  "homepage": "https://webmcp-private-lab.vercel.app",
+  "homepage": "https://mirror-webmcp-secure.vercel.app/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mirrorsecai/mirror-webmcp-secure.git"
@@ -15,10 +15,6 @@
       "types": "./src/index.d.ts",
       "default": "./src/index.js"
     },
-    "./context": {
-      "types": "./src/context.d.ts",
-      "default": "./src/context.js"
-    },
     "./loader": {
       "types": "./src/loader.d.ts",
       "default": "./src/loader.js"
@@ -28,13 +24,18 @@
     }
   },
   "files": [
-    "src",
+    "src/auto.js",
+    "src/index.d.ts",
+    "src/index.js",
+    "src/loader.d.ts",
+    "src/loader.js",
+    "src/model-context.js",
     "README.md",
     "SECURITY.md"
   ],
   "scripts": {
     "test": "node scripts/test-installed-package.mjs",
-    "test:source": "node --test tests/*.test.mjs",
+    "test:source": "node --test tests/loader.test.mjs",
     "secrets": "node scripts/check-secrets.mjs",
     "shape": "node scripts/check-release-shape.mjs",
     "build:loader": "esbuild src/auto.js --bundle --format=iife --platform=browser --target=es2022 --minify --legal-comments=none --outfile=artifacts/public/v1.js",

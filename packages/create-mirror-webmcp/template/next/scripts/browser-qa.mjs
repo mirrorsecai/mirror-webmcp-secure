@@ -70,8 +70,15 @@ try {
     throw new Error(`Native WebMCP registration failed: ${JSON.stringify(registration)}`);
   }
 
+  await waitFor(
+    () => evaluate(cdp, "document.querySelector('.buyer-panel button')?.disabled === false"),
+    15_000,
+    "enabled private requirements action"
+  );
   await evaluate(cdp, "document.querySelector('.buyer-panel button').click()");
-  await waitFor(() => evaluate(cdp, "document.querySelector('.boundary-line code')?.textContent.startsWith('mirrorh_srv_v1_')"), 15_000, "private requirements handle");
+  await waitFor(() => evaluate(cdp, "document.querySelector('.boundary-line code')?.textContent.startsWith('mirrorh_srv_v1_') || Boolean(document.querySelector('[role=alert]'))"), 15_000, "private requirements result");
+  const protectionError = await evaluate(cdp, "document.querySelector('[role=alert]')?.textContent || ''");
+  if (protectionError) throw new Error(`Protection failed: ${protectionError}`);
   await evaluate(cdp, "document.querySelector('.agent-panel button').click()");
   await waitFor(() => evaluate(cdp, "Boolean(document.querySelector('.proposal-section')) || Boolean(document.querySelector('[role=alert]'))"), 140_000, "protected seller proposal");
 

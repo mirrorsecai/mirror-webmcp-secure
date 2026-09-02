@@ -6,12 +6,15 @@ import {
   readSession,
   sessionCookie
 } from "../../../../lib/server-context.js";
+import { proxyMirrorGateway } from "../../../../lib/mirror-gateway-proxy.js";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request) {
   try {
-    assertSameOrigin(request);
+    const gateway = await proxyMirrorGateway(request);
+    if (gateway) return gateway;
+    const origin = assertSameOrigin(request);
     let sessionId;
     try {
       sessionId = readSession(request);
@@ -27,7 +30,7 @@ export async function GET(request) {
     }, {
       headers: {
         "Cache-Control": "private, no-store",
-        "Set-Cookie": sessionCookie(sessionId)
+        "Set-Cookie": sessionCookie(sessionId, { secure: new URL(origin).protocol === "https:" })
       }
     });
   } catch (error) {

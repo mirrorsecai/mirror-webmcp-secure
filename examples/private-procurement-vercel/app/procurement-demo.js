@@ -144,7 +144,7 @@ export function ProcurementDemo() {
     <main>
       <header className="site-header">
         <a className="brand" href="https://mirrorsecurity.io/etf/">MIRROR</a>
-        <span>PRIVATE PROCUREMENT / WEBMCP</span>
+        <span>PRIVATE SITE TOOLS / WEBMCP</span>
         <span className={`connection ${nativeConnected ? "live" : "preview"}`}>
           {nativeConnected ? "Native WebMCP connected" : "Local WebMCP preview"}
         </span>
@@ -152,15 +152,65 @@ export function ProcurementDemo() {
 
       <section className="hero">
         <div>
-          <p className="eyebrow">TWO AGENTS. TWO PRIVATE CONTEXTS. ONE AGREED RESULT.</p>
-          <h1>Let buyer and seller agents collaborate without trading their intelligence.</h1>
-          <p className="lede">Mirror keeps buyer constraints out of agent context and seller pricing rules inside the site. Only an approved offer crosses.</p>
+          <p className="eyebrow">PRIVATE ACTIONS FOR WEBMCP</p>
+          <h1>Let agents act on private data without putting it in agent context.</h1>
+          <p className="lede">WebMCP makes a website actionable. Mirror keeps sensitive site state under website control and releases only what the user approves.</p>
         </div>
-        <div className="flow" aria-label="Private transaction flow">
-          <div><strong>BUYER</strong><span>Private requirements</span></div>
-          <b>→</b><div className="mirror"><strong>MIRROR</strong><span>Match + bind</span></div>
-          <b>→</b><div><strong>SELLER AGENT</strong><span>Bounded proposal</span></div>
-          <b>→</b><div className="result"><strong>RESULT</strong><span>Approved offer</span></div>
+        <div className="flow" aria-label="Private WebMCP action flow">
+          <div><strong>WEBSITE</strong><span>Private state</span></div>
+          <b>→</b><div className="mirror"><strong>MIRROR</strong><span>Restricted capability</span></div>
+          <b>→</b><div><strong>AGENT</strong><span>Bounded action</span></div>
+          <b>→</b><div className="result"><strong>RESULT</strong><span>Approved disclosure</span></div>
+        </div>
+      </section>
+
+      <section className="problem-section" aria-labelledby="privacy-gap-title">
+        <div className="problem-copy">
+          <p className="eyebrow">THE PRIVACY GAP</p>
+          <h2 id="privacy-gap-title">Useful actions often depend on private data.</h2>
+          <p>Financial limits, patient records, legal conflicts and private business rules can leak through tool arguments, chat history, logs and agent handoffs.</p>
+        </div>
+
+        <div className="boundary-comparison">
+          <article className="boundary-lane exposed-lane">
+            <div className="lane-copy">
+              <span>WITHOUT A DATA BOUNDARY</span>
+              <strong>The private record enters agent context.</strong>
+              <p>The agent can read and carry it beyond the action that needed it.</p>
+            </div>
+            <div className="boundary-route" aria-label="Private data copied through the conventional agent path">
+              <div><small>WEBSITE</small><strong>Private record</strong></div>
+              <b aria-hidden="true">→</b>
+              <div><small>AGENT</small><strong>Readable context</strong></div>
+              <b aria-hidden="true">→</b>
+              <div><small>ACTION</small><strong>Tool or provider</strong></div>
+              <b aria-hidden="true">→</b>
+              <div><small>RESIDUE</small><strong>History and traces</strong></div>
+            </div>
+          </article>
+
+          <article className="boundary-lane protected-lane">
+            <div className="lane-copy">
+              <span>WITH MIRROR</span>
+              <strong>The website keeps custody of the record.</strong>
+              <p>The agent receives a capability limited by user, session, origin, tool, purpose and expiry.</p>
+            </div>
+            <div className="boundary-route" aria-label="Private data retained by the website while the agent receives a restricted capability">
+              <div><small>WEBSITE</small><strong>Private record</strong></div>
+              <b aria-hidden="true">→</b>
+              <div className="protected-node"><small>MIRROR</small><strong>Restricted handle</strong></div>
+              <b aria-hidden="true">→</b>
+              <div><small>AGENT</small><strong>Bounded action</strong></div>
+              <b aria-hidden="true">→</b>
+              <div className="released-node"><small>RESULT</small><strong>Approved release</strong></div>
+            </div>
+          </article>
+        </div>
+
+        <div className="demo-intro">
+          <p className="eyebrow">SEE IT IN ONE REAL WORKFLOW</p>
+          <h2>One buyer. One seller. Only the agreed offer crosses.</h2>
+          <p>Procurement is one example. The same boundary can protect financial profiles, patient records, legal conflicts and private evaluations.</p>
         </div>
       </section>
 
@@ -218,7 +268,7 @@ export function ProcurementDemo() {
       )}
 
       <section className="integration-section">
-        <div><h2>Add the boundary without shipping the private SDK.</h2><p>The 17 KB public loader reads a same-origin manifest, joins the authenticated site session, and registers these tools. Keys, policy, and protected services remain behind the endpoints.</p></div>
+        <div><h2>Add the boundary without shipping the private SDK.</h2><p>The public adapter is under 6 KB. It reads a same-origin manifest, joins the authenticated site session, and registers these tools. Handle state, keys, policy, and protected services remain behind the endpoints.</p></div>
         <pre><code>{`<script defer
   src="/mirror-webmcp-v1.js"
   data-mirror-webmcp

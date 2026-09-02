@@ -13,6 +13,9 @@ export async function runSellerAgent(rawHandoff, options = {}) {
 }
 
 async function runVercelSellerAgent(handoff) {
+  if (!process.env.AI_GATEWAY_API_KEY && !process.env.VERCEL_OIDC_TOKEN) {
+    throw new Error("seller_agent_not_configured");
+  }
   let issuedProposal = null;
   const eligible = new Set(handoff.eligibleSkuIds);
 

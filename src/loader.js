@@ -1,18 +1,21 @@
-import { createWebMcpSecure } from "./index.js";
 import { resolveModelContext } from "./model-context.js";
 
 export const WEBMCP_SITE_MANIFEST_SCHEMA = "mirror.webmcp.site_manifest.v1";
+export const WEBMCP_TOOL_CALL_SCHEMA = "mirror.webmcp.tool_call.v1";
 export const WEBMCP_TOOL_RESULT_SCHEMA = "mirror.webmcp.tool_result.v1";
+export const WEBMCP_APPROVAL_REQUEST_SCHEMA = "mirror.webmcp.approval_request.v1";
+export const WEBMCP_APPROVAL_SCHEMA = "mirror.webmcp.approval.v1";
 
 /**
- * Register endpoint-backed Site Tools from a same-origin manifest.
+ * Register endpoint-backed WebMCP Site Tools from a same-origin manifest.
  *
- * A site id identifies configuration; it is never treated as a credential.
- * The site's context endpoint authenticates the browser session, and every
- * tool endpoint must repeat authorization and binding checks server-side.
+ * This file is intentionally only a transport adapter. It contains no handle
+ * cryptography, protected-compute client, policy engine, key, or privileged
+ * receipt logic. Those controls belong behind the site's authenticated
+ * endpoints, where browser visitors cannot download them.
  */
 export async function installWebMcpLoader(options = {}) {
-  const script = options.script ?? findLoaderScript();
+  const script = options.script ?? findLoaderScript(options.document ?? globalThis.document);
   const siteId = required(options.siteId ?? script?.dataset.site, "siteId");
   const origin = options.origin ?? globalThis.location?.origin;
   const fetcher = options.fetcher ?? globalThis.fetch?.bind(globalThis);
@@ -30,16 +33,10 @@ export async function installWebMcpLoader(options = {}) {
   }), { siteId, origin });
 
   const contextUrl = sameOriginUrl(manifest.contextEndpoint, origin, "contextEndpoint");
-  const bootstrap = validateBootstrap(await fetchJson(fetcher, contextUrl, {
+  validateBootstrap(await fetchJson(fetcher, contextUrl, {
     credentials: "same-origin",
     headers: { Accept: "application/json", "X-Mirror-Site": siteId }
   }));
-  const context = () => ({
-    origin,
-    sessionId: bootstrap.sessionId,
-    ...(bootstrap.userId ? { userId: bootstrap.userId } : {}),
-    ...(bootstrap.model ? { model: bootstrap.model } : {})
-  });
   const nativeModelContext = resolveModelContext(
     options.modelContext,
     options.document?.modelContext ?? globalThis.document?.modelContext,
@@ -47,46 +44,36 @@ export async function installWebMcpLoader(options = {}) {
   );
   const registry = new Map();
   const nativeErrors = [];
-  const modelContext = {
-    async registerTool(tool, registration = {}) {
-      registry.set(tool.name, tool);
-      registration.signal?.addEventListener("abort", () => registry.delete(tool.name), { once: true });
-      if (typeof nativeModelContext?.registerTool !== "function") return;
-      try {
-        await nativeModelContext.registerTool(tool, registration);
-      } catch (error) {
-        nativeErrors.push(String(error?.message ?? error));
-      }
-    }
-  };
-  const secure = createWebMcpSecure({
-    context,
-    modelContext,
-    approval: options.approval ?? defaultApproval,
-    onEvidence: options.onEvidence
-  });
+  const toolNames = [];
 
   for (const pack of manifest.packs) {
-    await secure.registerPack({
-      name: pack.name,
-      tools: pack.tools.map((tool) => endpointTool({
+    for (const tool of pack.tools) {
+      const registered = endpointTool({
         tool,
         siteId,
         origin,
         fetcher,
-        accessToken: bootstrap.accessToken
-      }))
-    });
+        approvalEndpoint: manifest.approvalEndpoint,
+        approval: options.approval ?? defaultApproval
+      });
+      registry.set(tool.name, registered);
+      toolNames.push(tool.name);
+      if (typeof nativeModelContext?.registerTool !== "function") continue;
+      try {
+        await nativeModelContext.registerTool(registered, options.registration);
+      } catch (error) {
+        nativeErrors.push(safeMessage(error));
+      }
+    }
   }
 
   const detail = Object.freeze({
     siteId,
     manifestUrl,
-    tools: secure.runtime.registeredTools(),
+    tools: Object.freeze([...toolNames]),
     nativeWebMcpAvailable: typeof nativeModelContext?.registerTool === "function",
     nativeErrors: Object.freeze([...nativeErrors]),
-    secure,
-    async invoke(name, args, invokeOptions) {
+    async invoke(name, args, invokeOptions = {}) {
       const tool = registry.get(name);
       if (!tool) throw new Error(`WebMCP tool '${name}' is not registered.`);
       return tool.execute(args, invokeOptions);
@@ -97,41 +84,72 @@ export async function installWebMcpLoader(options = {}) {
   return detail;
 }
 
-function endpointTool({ tool, siteId, origin, fetcher, accessToken }) {
+function endpointTool({ tool, siteId, origin, fetcher, approvalEndpoint, approval }) {
   const endpoint = sameOriginUrl(tool.endpoint, origin, `endpoint for ${tool.name}`);
-  return {
+  const approvalUrl = tool.requiresApproval
+    ? sameOriginUrl(required(approvalEndpoint, "approvalEndpoint"), origin, "approvalEndpoint")
+    : undefined;
+  return Object.freeze({
     name: tool.name,
     title: tool.title,
     description: tool.description,
     inputSchema: tool.inputSchema,
     annotations: tool.annotations,
-    exposedTo: tool.exposedTo,
-    requiresApproval: Boolean(tool.requiresApproval),
-    approvalSummary: tool.approvalSummary,
-    async execute(args, call) {
-      const result = validateToolResult(await fetchJson(fetcher, endpoint, {
-        method: "POST",
-        credentials: "same-origin",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          "X-Mirror-Site": siteId,
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
-        },
-        body: JSON.stringify({
-          schema: "mirror.webmcp.tool_call.v1",
-          siteId,
+    async execute(args, call = {}) {
+      let approvalToken;
+      if (tool.requiresApproval) {
+        const approved = await approval(Object.freeze({
           tool: tool.name,
+          title: tool.title,
+          summary: tool.approvalSummary ?? `Allow ${tool.name} to run`,
           arguments: args
-        }),
-        signal: call.signal
-      }));
-      return call.publicResult(result.value, {
-        sensitivity: result.sensitivity ?? "public",
-        approvalSummary: result.approvalSummary
-      });
+        }));
+        if (!approved) throw new Error("User approval is required for this operation.");
+        const approvalResult = validateApproval(await fetchJson(fetcher, approvalUrl, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "X-Mirror-Site": siteId
+          },
+          body: JSON.stringify({
+            schema: WEBMCP_APPROVAL_REQUEST_SCHEMA,
+            siteId,
+            tool: tool.name,
+            arguments: args
+          }),
+          signal: call?.signal
+        }));
+        approvalToken = approvalResult.approvalToken;
+      }
+      dispatch("mirror:webmcp-call", Object.freeze({ tool: tool.name, state: "running" }));
+      try {
+        const result = validateToolResult(await fetchJson(fetcher, endpoint, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "X-Mirror-Site": siteId
+          },
+          body: JSON.stringify({
+            schema: WEBMCP_TOOL_CALL_SCHEMA,
+            siteId,
+            tool: tool.name,
+            arguments: args,
+            ...(approvalToken ? { approvalToken } : {})
+          }),
+          signal: call?.signal
+        }));
+        dispatch("mirror:webmcp-call", Object.freeze({ tool: tool.name, state: "complete" }));
+        return result.value;
+      } catch (error) {
+        dispatch("mirror:webmcp-call", Object.freeze({ tool: tool.name, state: "failed" }));
+        throw error;
+      }
     }
-  };
+  });
 }
 
 function validateManifest(value, { siteId, origin }) {
@@ -142,13 +160,18 @@ function validateManifest(value, { siteId, origin }) {
   }
   required(value.contextEndpoint, "contextEndpoint");
   if (!Array.isArray(value.packs) || value.packs.length === 0) throw new Error("The manifest must contain at least one tool pack.");
+  const names = new Set();
   for (const pack of value.packs) {
     required(pack?.name, "pack.name");
     if (!Array.isArray(pack.tools) || pack.tools.length === 0) throw new Error(`Tool pack ${pack.name} is empty.`);
     for (const tool of pack.tools) {
-      required(tool?.name, "tool.name");
-      required(tool?.description, `description for ${tool?.name ?? "tool"}`);
-      required(tool?.endpoint, `endpoint for ${tool?.name ?? "tool"}`);
+      const name = required(tool?.name, "tool.name");
+      if (names.has(name)) throw new Error(`Duplicate WebMCP tool '${name}'.`);
+      names.add(name);
+      required(tool?.description, `description for ${name}`);
+      required(tool?.endpoint, `endpoint for ${name}`);
+      if (!tool.inputSchema || tool.inputSchema.type !== "object") throw new Error(`Input schema for ${name} must be an object schema.`);
+      if (tool.requiresApproval) required(value.approvalEndpoint, "approvalEndpoint");
     }
   }
   return value;
@@ -157,16 +180,20 @@ function validateManifest(value, { siteId, origin }) {
 function validateBootstrap(value) {
   if (!value || value.schema !== "mirror.webmcp.session.v1") throw new Error("Invalid Mirror WebMCP session bootstrap.");
   required(value.sessionId, "sessionId");
-  if (value.accessToken !== undefined) required(value.accessToken, "accessToken");
+  if (value.accessToken !== undefined) throw new Error("Use an HttpOnly site session instead of a browser bearer token.");
   return value;
 }
 
 function validateToolResult(value) {
   if (!value || value.schema !== WEBMCP_TOOL_RESULT_SCHEMA) throw new Error("Invalid Mirror WebMCP tool result.");
   if (!("value" in value)) throw new Error("The Mirror WebMCP tool result is missing value.");
-  if (value.sensitivity !== undefined && !["public", "sensitive"].includes(value.sensitivity)) {
-    throw new Error("Invalid Mirror WebMCP result sensitivity.");
-  }
+  return value;
+}
+
+function validateApproval(value) {
+  if (!value || value.schema !== WEBMCP_APPROVAL_SCHEMA) throw new Error("Invalid Mirror WebMCP approval response.");
+  required(value.approvalToken, "approvalToken");
+  required(value.expiresAt, "expiresAt");
   return value;
 }
 
@@ -178,8 +205,15 @@ async function fetchJson(fetcher, url, init) {
   } catch {
     throw new Error(`Mirror WebMCP endpoint returned non-JSON (HTTP ${response.status}).`);
   }
-  if (!response.ok) throw new Error(value?.error ?? `Mirror WebMCP endpoint failed with HTTP ${response.status}.`);
+  if (!response.ok) throw new Error(safeRemoteError(value, response.status));
   return value;
+}
+
+function safeRemoteError(value, status) {
+  const code = typeof value?.error === "string" && /^[a-z0-9_.-]{1,96}$/i.test(value.error)
+    ? value.error
+    : `http_${status}`;
+  return `Mirror WebMCP request failed (${code}).`;
 }
 
 function sameOriginUrl(value, origin, field) {
@@ -199,9 +233,13 @@ function defaultApproval(request) {
   return globalThis.confirm(request.summary);
 }
 
-function findLoaderScript() {
-  const scripts = globalThis.document?.querySelectorAll?.("script[data-mirror-webmcp][data-site]");
+function findLoaderScript(documentValue) {
+  const scripts = documentValue?.querySelectorAll?.("script[data-mirror-webmcp][data-site]");
   return scripts?.[scripts.length - 1];
+}
+
+function safeMessage(error) {
+  return String(error?.message ?? error).replace(/[\r\n]+/g, " ").slice(0, 240);
 }
 
 function dispatch(name, detail) {

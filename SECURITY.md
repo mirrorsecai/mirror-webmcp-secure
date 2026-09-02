@@ -1,26 +1,33 @@
 # Security boundary
 
-Mirror WebMCP Secure reduces the private data that an agent and its tools receive. It does not turn an untrusted browser or application into a trusted environment.
+Mirror WebMCP Secure reduces the private data that a browser agent and downstream tools receive. It does not turn an untrusted browser or application server into a trusted environment.
 
-## Protected by this layer
+## Enforced by the reference flow
 
-- Private values can be replaced with authenticated opaque handles before entering agent context.
-- Handles are bound to their intended origin, session, user, model, purpose, allowed tools, and lifetime.
-- A handler must satisfy the binding before resolving a value.
-- Sensitive release can require an application-owned approval step.
-- Evidence records contain bounded event facts rather than protected values.
+- Private values are replaced with authenticated handles before agent use.
+- Handles are bound to origin, application user, session, purpose, allowed tools and lifetime.
+- An endpoint satisfies the complete binding before it receives the private value.
+- Sensitive release requires a short-lived approval bound to the exact tool arguments.
+- Seller handoffs use an explicit allow-list and reject known private buyer fields.
+- Browser builds are scanned for private SDK, client, WASM, key-name, source-map and seller-policy markers.
+
+The private Cloudflare deployment adds server-stored opaque handles, signed Vercel requests, ingress nonce replay rejection, per-tool handle consumption and atomic one-use approvals.
 
 ## Application responsibilities
 
 - Authenticate the current user and session.
 - Authorize every underlying business action.
-- Use narrow JSON schemas and validate all arguments.
-- Keep provider credentials, decryption keys, and privileged execution on the server when they must remain secret.
-- Apply CSP, dependency review, output encoding, and ordinary web security controls.
-- Treat tool content as untrusted and defend against semantic prompt injection.
+- Validate exact schemas and reject extra arguments.
+- Keep provider credentials, decryption keys and privileged execution on the server.
+- Apply CSP, dependency review, safe output encoding and normal web security controls.
+- Treat tool descriptions, arguments and returned content as untrusted.
+- Add idempotency and an authoritative transaction ledger for real financial or operational commitments.
 
-## Explicit non-goals
+## Not claimed
 
-This package does not protect against compromised same-origin JavaScript, a malicious browser extension, device compromise, operating-system compromise, or a malicious application backend. Anything delivered to a browser, including JavaScript and WASM, can be downloaded and inspected. A private repository controls source distribution; it does not make shipped browser code secret.
+- The adapter cannot attest which ChatGPT model is active because the current WebMCP page API does not provide a server-verifiable model identity.
+- The public Vercel fallback does not provide atomic replay state across serverless instances. The private Durable Object path does.
+- This does not protect a compromised same-origin page, browser extension, device, operating system or application backend.
+- A private repository does not make shipped browser code secret. Everything delivered to a browser can be inspected.
 
-Report suspected issues privately to the Mirror Security team. Do not open a public issue while the repository remains private.
+Report suspected issues privately to the Mirror Security team. Do not open a public issue before the repository is approved for publication.

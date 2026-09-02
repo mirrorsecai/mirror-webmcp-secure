@@ -2,7 +2,10 @@ import { readdir, readFile } from "node:fs/promises";
 import { extname, join, relative, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
-const allowedExtensions = new Set([".css", ".example", ".html", ".js", ".json", ".md", ".mjs", ".svg", ".yml"]);
+const allowedExtensions = new Set([
+  ".css", ".example", ".html", ".js", ".json", ".jsonc", ".md", ".mjs",
+  ".sh", ".svg", ".ts", ".tsx", ".txt", ".yaml", ".yml"
+]);
 const excluded = new Set([".git", ".vercel", "artifacts", "dist", "node_modules"]);
 const patterns = [
   [/\bsk-[A-Za-z0-9_-]{20,}\b/g, "provider API key"],

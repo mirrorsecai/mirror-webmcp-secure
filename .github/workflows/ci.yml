@@ -19,6 +19,6 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: examples/private-procurement-vercel/package-lock.json
-      - run: npm install --ignore-scripts
+      - run: npm ci --ignore-scripts
       - run: npm --prefix examples/private-procurement-vercel ci --ignore-scripts
       - run: npm run release:check

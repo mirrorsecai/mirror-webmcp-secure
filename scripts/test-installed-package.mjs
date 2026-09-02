@@ -9,65 +9,77 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 const fixture = await mkdtemp(path.join(os.tmpdir(), "mirror-webmcp-secure-install-"));
 
 try {
-  const starterTarball = pack(projectRoot);
-  const starterTarget = path.join(fixture, "node_modules/@mirror/webmcp-secure");
-  await mkdir(starterTarget, { recursive: true });
-  extract(starterTarball, starterTarget);
+  const archive = pack(projectRoot);
+  const target = path.join(fixture, "node_modules/@mirror/webmcp-secure");
+  await mkdir(target, { recursive: true });
+  extract(archive, target);
 
-  const installed = await import(pathToFileURL(path.join(fixture, "node_modules/@mirror/webmcp-secure/src/index.js")));
-  const context = installed.createWebMcpContext({
-    origin: "https://release-test.invalid",
-    sessionId: "release-session",
-    userId: "release-user",
-    model: "release-agent"
-  });
+  const installed = await import(pathToFileURL(path.join(target, "src/index.js")));
   const registered = new Map();
-  const siteTools = installed.createWebMcpSecure({
-    context: context.get,
-    modelContext: {
-      registerTool(tool) {
-        registered.set(tool.name, tool);
-      }
-    },
-    approval: async () => true
+  const requests = [];
+  const origin = "https://release-test.invalid";
+  const fetcher = async (url, init = {}) => {
+    requests.push({ url, init });
+    if (url === `${origin}/.well-known/mirror-webmcp.json`) return json({
+      schema: "mirror.webmcp.site_manifest.v1",
+      siteId: "mirror_site_release",
+      allowedOrigins: [origin],
+      contextEndpoint: "/api/mirror/context",
+      approvalEndpoint: "/api/mirror/approve",
+      packs: [{
+        name: "eligibility.private",
+        tools: [{
+          name: "eligibility.release",
+          description: "Release a minimum eligibility result.",
+          endpoint: "/api/mirror/tool",
+          inputSchema: {
+            type: "object",
+            properties: { resultHandle: { type: "string" } },
+            required: ["resultHandle"],
+            additionalProperties: false
+          },
+          requiresApproval: true,
+          approvalSummary: "Release the eligibility result"
+        }]
+      }]
+    });
+    if (url === `${origin}/api/mirror/context`) return json({
+      schema: "mirror.webmcp.session.v1",
+      sessionId: "session-release"
+    });
+    if (url === `${origin}/api/mirror/approve`) return json({
+      schema: "mirror.webmcp.approval.v1",
+      approvalToken: "mirrora_test_release",
+      expiresAt: new Date(Date.now() + 60_000).toISOString()
+    });
+    if (url === `${origin}/api/mirror/tool`) return json({
+      schema: "mirror.webmcp.tool_result.v1",
+      value: { eligible: true, privateFieldsReturned: 0 }
+    });
+    throw new Error(`Unexpected request to ${url}`);
+  };
+  let approvals = 0;
+  const loaded = await installed.installWebMcpLoader({
+    siteId: "mirror_site_release",
+    origin,
+    fetcher,
+    modelContext: { registerTool(tool) { registered.set(tool.name, tool); } },
+    approval: async () => { approvals += 1; return true; }
   });
 
-  const profile = await siteTools.protect({ score: 742, maximumAprBps: 1400 }, {
-    kind: "application-profile",
-    purpose: "check-eligibility",
-    allowedTools: ["application.check"],
-    ttlMs: 60_000
-  });
-  await siteTools.registerPack({
-    name: "application.private",
-    tools: [{
-      name: "application.check",
-      description: "Return a derived eligibility decision.",
-      inputSchema: {
-        type: "object",
-        properties: { profileHandle: { type: "string" } },
-        required: ["profileHandle"],
-        additionalProperties: false
-      },
-      async execute({ profileHandle }, call) {
-        const value = await call.resolve(profileHandle, {
-          kind: "application-profile",
-          purpose: "check-eligibility"
-        });
-        return call.publicResult({ eligible: value.score >= 700 && value.maximumAprBps >= 1200 }, {
-          sensitivity: "sensitive",
-          approvalSummary: "Release eligibility decision"
-        });
-      }
-    }]
-  });
-
-  const result = await registered.get("application.check").execute({ profileHandle: profile.handle });
-  assert.deepEqual(result, { eligible: true });
-  assert.equal(siteTools.evidence().some((event) => event.event === "tool.completed"), true);
-  console.log("Standalone package proof passed through protect, bind, compute, approval, and release without Mirror SDK or WASM.");
+  const result = await registered.get("eligibility.release").execute({ resultHandle: "mirrorh_release_7" });
+  assert.deepEqual(result, { eligible: true, privateFieldsReturned: 0 });
+  assert.deepEqual(loaded.tools, ["eligibility.release"]);
+  assert.equal(approvals, 1);
+  assert.equal(JSON.parse(requests.at(-1).init.body).arguments.resultHandle, "mirrorh_release_7");
+  assert.equal(JSON.parse(requests.at(-1).init.body).approvalToken, "mirrora_test_release");
+  console.log("Standalone package proof passed through native registration, approval, and same-origin endpoint invocation.");
 } finally {
   await rm(fixture, { recursive: true, force: true });
+}
+
+function json(value, status = 200) {
+  return { ok: status >= 200 && status < 300, status, async json() { return value; } };
 }
 
 function pack(directory) {

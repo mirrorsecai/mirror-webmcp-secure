@@ -46,8 +46,7 @@ test("one-line loader registers a same-origin endpoint tool without the private 
       schema: "mirror.webmcp.session.v1",
       sessionId: "session-7",
       userId: "user-4",
-      model: "codex",
-      accessToken: "short-lived-test-token"
+      model: "codex"
     });
     if (url === `${origin}/api/mirror/search`) return response({
       schema: "mirror.webmcp.tool_result.v1",
@@ -73,7 +72,7 @@ test("one-line loader registers a same-origin endpoint tool without the private 
     tool: "catalog.search_private",
     arguments: { queryHandle: "mirrorh_server_17" }
   });
-  assert.equal(requests.at(-1).init.headers.Authorization, "Bearer short-lived-test-token");
+  assert.equal("Authorization" in requests.at(-1).init.headers, false);
 });
 
 test("one-line loader prefers the supported document WebMCP API over an incomplete navigator candidate", async () => {
@@ -118,5 +117,66 @@ test("one-line loader rejects a cross-origin tool endpoint", async () => {
       modelContext: { registerTool() {} }
     }),
     /must be same-origin/
+  );
+});
+
+test("approval-gated tool obtains a bound server token before invocation", async () => {
+  const registered = new Map();
+  const requests = [];
+  const protectedManifest = manifest();
+  protectedManifest.approvalEndpoint = "/api/mirror/approve";
+  protectedManifest.packs[0].tools[0].requiresApproval = true;
+  protectedManifest.packs[0].tools[0].approvalSummary = "Release the private match";
+  const fetcher = async (url, init = {}) => {
+    requests.push({ url, init });
+    if (url.endsWith("mirror-webmcp.json")) return response(protectedManifest);
+    if (url.endsWith("/context")) return response({ schema: "mirror.webmcp.session.v1", sessionId: "session-7" });
+    if (url.endsWith("/approve")) return response({
+      schema: "mirror.webmcp.approval.v1",
+      approvalToken: "mirrora_bound_17",
+      expiresAt: new Date(Date.now() + 60_000).toISOString()
+    });
+    if (url.endsWith("/search")) return response({
+      schema: "mirror.webmcp.tool_result.v1",
+      value: { released: true }
+    });
+    throw new Error(`Unexpected URL: ${url}`);
+  };
+  let approvalRequest;
+  await installWebMcpLoader({
+    siteId: "mirror_site_demo",
+    origin,
+    fetcher,
+    modelContext: { registerTool(tool) { registered.set(tool.name, tool); } },
+    approval: async (value) => { approvalRequest = value; return true; }
+  });
+  const args = { queryHandle: "mirrorh_server_17" };
+  assert.deepEqual(await registered.get("catalog.search_private").execute(args), { released: true });
+  assert.equal(approvalRequest.summary, "Release the private match");
+  assert.equal(requests.at(-2).url, `${origin}/api/mirror/approve`);
+  assert.deepEqual(JSON.parse(requests.at(-2).init.body).arguments, args);
+  assert.equal(JSON.parse(requests.at(-1).init.body).approvalToken, "mirrora_bound_17");
+});
+
+test("approval-gated tool fails closed when the user declines", async () => {
+  const registered = new Map();
+  const protectedManifest = manifest();
+  protectedManifest.approvalEndpoint = "/api/mirror/approve";
+  protectedManifest.packs[0].tools[0].requiresApproval = true;
+  const fetcher = async (url) => {
+    if (url.endsWith("mirror-webmcp.json")) return response(protectedManifest);
+    if (url.endsWith("/context")) return response({ schema: "mirror.webmcp.session.v1", sessionId: "session-7" });
+    throw new Error(`Approval decline must not call ${url}`);
+  };
+  await installWebMcpLoader({
+    siteId: "mirror_site_demo",
+    origin,
+    fetcher,
+    modelContext: { registerTool(tool) { registered.set(tool.name, tool); } },
+    approval: async () => false
+  });
+  await assert.rejects(
+    registered.get("catalog.search_private").execute({ queryHandle: "mirrorh_server_17" }),
+    /approval is required/
   );
 });

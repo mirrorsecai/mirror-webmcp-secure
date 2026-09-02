@@ -6,109 +6,134 @@
 
 ## One-line pitch
 
-Native Site Tools that let agents use private website data without copying it into agent context or tool transcripts.
+Give an agent the authority to use private website data without copying the underlying record into agent context.
 
-## Submission description
+## Short description
 
-WebMCP makes websites actionable. The most valuable actions often depend on data that should not become agent context: a buyer's budget, a patient's record, a legal conflict list, a private benchmark, or a seller's pricing policy.
+WebMCP makes websites actionable. The most valuable actions often depend on information that should not become part of an agent transcript, such as a buyer's ceiling price, a patient's record, a legal conflict list, a private benchmark, or a seller's pricing policy.
 
-Mirror WebMCP Secure gives the agent capability without giving it the underlying record.
+Mirror WebMCP Secure gives the agent a narrow capability instead of the raw record.
 
-A website protects private page state and returns a short-lived handle bound to the origin, user, session, model, purpose and allowed tools. ChatGPT or Codex discovers ordinary imperative Site Tools and chains them using the handle. The website opens it only inside the exact permitted endpoint. A result stays behind another handle until the user approves release or commitment.
+A person enters private information directly into the website. The site returns an opaque handle bound to the user, session, origin, purpose, allowed tool and expiry. ChatGPT discovers ordinary Site Tools and chains them with that handle. The website resolves the handle only inside the exact permitted action. Sensitive release and commitment require fresh approval bound to the exact tool arguments.
 
-The reference application makes this concrete with a buyer agent and a seller agent:
+The reference application demonstrates this with private procurement. A buyer agent finds compatible products and requests a proposal from a seller agent. The buyer agent never receives the price ceiling, certifications or private note. The seller receives only eligible product identifiers, quantity and delivery window. The buyer approves one offer. Neither party receives the other's private policy.
 
-1. A buyer enters private accelerator requirements into the website, not agent chat.
-2. The site replaces the form with a context-bound handle.
-3. The browser agent calls `procurement.find_private_matches`.
-4. The site performs the private match and returns a second handle.
-5. The agent calls `procurement.request_seller_proposal`.
-6. The site sends only eligible SKU identifiers, quantity and delivery window into a protected seller route.
-7. `mirror/glm-5.3-flash` receives encrypted ingress, computes on ciphertext and returns encrypted egress.
-8. The proposal remains private until the user approves release.
-9. A second approval commits the proposal and returns a receipt.
+## What happens in the live flow
 
-The buyer agent never receives the raw requirements. The remote seller model never receives readable buyer data. The seller application never receives the browser handle. The buyer receives one approved offer, not seller pricing rules. The visible receipt confirms that zero buyer-private fields were returned.
+1. The buyer enters requirements into the website, not agent chat.
+2. The website returns a private requirements handle.
+3. ChatGPT calls `procurement.find_private_matches` with that handle.
+4. The site performs the match and returns a private match handle plus a minimum status.
+5. ChatGPT calls `procurement.request_seller_proposal`.
+6. The seller receives only the allow-listed handoff.
+7. The site keeps the proposal behind another handle.
+8. The buyer approves `procurement.release_proposal` and receives one offer.
+9. A separate approval allows `procurement.accept_proposal` to return a receipt.
 
 ## Why this needs WebMCP
 
-This is not a chat wrapper. The website is the trust boundary and owns the private state, authenticated session, tools, approvals and business policy. WebMCP gives the user-controlled agent a live, discoverable action surface inside that website.
+This is not a chat wrapper. The website owns the authenticated state, private records, tools, approvals and business policy. WebMCP lets the user's agent discover and use that live action surface without moving the full private page state into its prompt.
 
-The agent can plan and chain actions without copying the page's private data into its prompt. The same site works with an ordinary browser preview and registers natively through `document.modelContext.registerTool()` in a supported ChatGPT built-in browser.
+The person contributes private intent. The agent contributes planning and tool use. The website contributes trusted state and policy. Each participant sees only what it needs.
 
-## New human-agent collaboration pattern
+## Technical implementation
 
-Conventional automation gives an agent both the task and the data. Mirror separates them:
+- Four imperative tools registered with `document.modelContext.registerTool()`.
+- An under 6 KB same-origin browser adapter.
+- No browser-side handle cryptography, private SDK, WASM, service key or seller policy.
+- Context-bound, expiring server handles.
+- Exact JSON schemas that reject unexpected and known private fields.
+- A seller handoff restricted to eligible SKU identifiers, quantity and delivery window.
+- Approval tokens bound to origin, user, session, tool and canonical argument digest.
+- Minimum-result release and a separate commit receipt.
+- Tests for cross-origin endpoints, handle modification, session replay, tool and purpose substitution, approval modification, approval argument swapping, expiry and browser-bundle leakage.
 
-- The human supplies private intent directly to the trusted website.
-- The agent receives authority to invoke a narrow operation.
-- The website and protected model compute with only the data each step needs.
-- The human approves the information or action that crosses the boundary.
+The public reference application is complete and runs without a proprietary dependency. An optional hosted configuration can send the bounded seller request to Mirror encrypted inference. This extra route is not required for the WebMCP experience or for running the open-source application.
 
-This pattern applies to procurement, finance, healthcare, legal intake, private evaluation, enterprise search and cross-company workflows.
+## Deployment architecture
 
-## Implementation
+Vercel hosts the reference application and same-origin WebMCP surface. The hardened hosted path signs requests to a private Cloudflare Worker. A per-session Durable Object stores opaque handle state, rejects replay and consumes approvals atomically. Protected Mirror services remain behind narrow server endpoints.
 
-- Four imperative WebMCP Site Tools loaded from a same-origin manifest.
-- An approximately 18 KB browser loader with no private SDK, WASM, key or source map.
-- Authenticated, expiring server handles bound to context, purpose and exact tool names.
-- Strict JSON schemas that reject extra and known private fields.
-- A bounded two-agent handoff.
-- Real encrypted seller inference with `mirror/glm-5.3-flash` in the hosted configuration.
-- Deterministic seller-side pricing. The model cannot choose or reveal the private price floor.
-- Separate approval gates for proposal release and transaction commitment.
-- Negative tests for replay, modified handles, wrong tool or purpose and private-result leakage.
-- A complete `create-mirror-webmcp` Next.js starter for website owners.
+The public repository contains all code required to run the WebMCP application. It does not publish Mirror's separate hosted cryptographic service, keys or proprietary SDK.
+
+## Why it is useful beyond procurement
+
+The same pattern applies wherever the website should retain custody of private state:
+
+- Finance: evaluate eligibility without returning a financial profile.
+- Healthcare: check care criteria without placing a patient record in agent chat.
+- Legal: run conflict checks without returning the full client list.
+- Enterprise search: answer from approved claims without releasing source documents.
+- Evaluation: use hidden cases and return only an approved score.
+- Cross-company workflows: let two agents transact without exchanging both parties' private rules.
+
+## Judging fit
+
+- **Useful:** lets agents complete actions that would otherwise require oversharing.
+- **Original:** separates data custody from agent authority using handles and release boundaries.
+- **Executed:** complete live app, native tools, approvals, endpoint tests and a clean starter.
+- **Thoughtful WebMCP:** the agent plans and chains website-owned capabilities rather than scraping the UI.
+- **Human-agent experience:** the person supplies private intent and approves disclosure; the agent handles the workflow.
 
 ## Links
 
 - Live application: <https://mirror-webmcp-secure.vercel.app/>
-- Public source: <https://github.com/mirrorsecai/mirror-webmcp-secure>
-- Product: <https://mirrorsecurity.io/etf/>
-- Demo video: add after the final native recording
+- Source repository: <https://github.com/mirrorsecai/mirror-webmcp-secure>
+- Mirror: <https://mirrorsecurity.io/etf/>
+- Demo video: add after final recording
 
-## Demo script, 2 minutes 35 seconds
+## Final video script, 2 minutes 45 seconds
 
-### 0:00 to 0:20 | The problem
+### 0:00 to 0:20 | Start with the result
 
-Show the private buyer form beside the browser-agent panel.
+Show the final offer and the line that says zero buyer-private fields were returned.
 
-Say: "WebMCP lets an agent act on a website. The privacy problem is that useful actions often need data we do not want copied into the agent's context."
+Say: "A buyer agent and a seller agent reached an offer. The buyer's ceiling price and private note never entered agent chat, and the seller's pricing policy never left the site."
 
-### 0:20 to 0:45 | Native tools
+### 0:20 to 0:45 | Show native WebMCP
 
-Show **Native WebMCP connected** and the four registered tool names.
+Show **Native WebMCP connected** and the four registered tool names in ChatGPT's built-in browser.
 
-Say: "This page registers four real imperative Site Tools. The website keeps its authenticated state and the agent receives only tool schemas and handles."
+Say: "These are real imperative Site Tools. ChatGPT sees their schemas and opaque handles. The website keeps custody of the underlying records."
 
-### 0:45 to 1:10 | Protect the buyer
+### 0:45 to 1:15 | Protect and match
 
-Click **Seal requirements**. Show the short handle fingerprint. Run `procurement.find_private_matches`.
+Enter the private requirements and click **Seal requirements**. Ask ChatGPT to find compatible products.
 
-Say: "The budget, certifications and private note never enter agent chat. The first tool privately finds compatible products and returns another handle."
+Say: "The private form goes directly to the website. ChatGPT receives a short-lived handle and calls the private match tool. The result is another handle, not the buyer profile or rejected products."
 
-### 1:10 to 1:40 | Two-agent encrypted handoff
+### 1:15 to 1:45 | Two agents collaborate
 
-Click **Run private negotiation**. Show the tool sequence advancing while the real protected call runs.
+Ask ChatGPT to request the seller proposal. Show the allow-listed handoff in the visible trace.
 
-Say: "The seller path receives only eligible SKUs, quantity and delivery window. Mirror encrypts that bounded request before remote inference. The model computes on ciphertext and provider reasoning remains withheld."
+Say: "The seller gets only eligible product identifiers, quantity and delivery window. It does not receive the buyer's budget, certifications, note or browser handle."
 
-### 1:40 to 2:05 | Human-controlled release
+### 1:45 to 2:15 | Human-controlled release
 
-Approve the proposal release. Show the offer and encrypted-inference facts. Approve commitment and show the receipt.
+Show the release approval. Approve it, then approve acceptance and show the receipt.
 
-Say: "The buyer receives one approved offer. The seller's price floor stays private, and the receipt shows that zero buyer fields were returned."
+Say: "The user decides when the offer crosses. Approval is bound to this tool and these exact arguments. Swapping the proposal handle invalidates it. Acceptance is a separate decision."
 
-### 2:05 to 2:25 | Site-owner integration
+### 2:15 to 2:35 | Show a blocked misuse
 
-Show the loader snippet and `npx create-mirror-webmcp my-private-site`.
+Run one cross-session replay or argument-substitution test.
 
-Say: "A site owner can start from the generated Next.js app or add the same-origin loader. Keys, policy and protected execution stay behind server endpoints."
+Say: "A handle is not a bearer secret that works everywhere. Change the session, purpose, tool or approved arguments and the request fails before the private operation runs."
 
-### 2:25 to 2:35 | Close
+### 2:35 to 2:45 | Close
 
-Say: "WebMCP defines what the agent can do. Mirror controls what private data those actions can receive, use and release."
+Show the one-line integration and repository.
+
+Say: "WebMCP defines what the agent can do. Mirror limits what private data the action can receive and release."
 
 ## Accuracy boundary
 
-The browser Site Tools, context-bound handles, approvals, seller handoff and encrypted model call are real. No synthetic success is returned. The protected route fails closed when it cannot prove encrypted ingress, ciphertext compute and encrypted egress. The private Mirror SDK and cryptographic runtime are server-side and are not part of the public browser bundle.
+The Site Tools, server handles, two-agent handoff, approval binding and minimum-result release are real. No synthetic success is returned. The app fails closed when a configured seller route cannot complete. The optional Mirror encrypted-inference service is server-side and is not required to run the open-source WebMCP application.
+
+## Final form checklist
+
+- Project description: this document.
+- Working live app: verify after final deployment.
+- Public code repository: create from the reviewed allow-listed export.
+- Demo video: record in ChatGPT's built-in browser and keep below three minutes.
+- Submission: complete through Devpost before September 3, 2026 at 1:00 PM Pacific Time.

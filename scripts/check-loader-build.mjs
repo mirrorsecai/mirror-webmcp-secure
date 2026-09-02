@@ -8,11 +8,21 @@ const files = await readdir(directory);
 if (files.length !== 1 || files[0] !== "v1.js") throw new Error("The public loader build must contain only v1.js.");
 const file = resolve(directory, "v1.js");
 const [source, pinnedSource, info] = await Promise.all([readFile(file, "utf8"), readFile(pinnedLoader, "utf8"), stat(file)]);
-for (const marker of ["@mirror/sdk", "mirror_wasm", "MIRROR_SDK_PATH", ".wasm", "sourceMappingURL"]) {
+for (const marker of [
+  "@mirror/sdk",
+  "Mirror" + "Client",
+  "mirror_wasm",
+  "MIRROR_SDK_PATH",
+  "protectedMapi" + "ConverseFromText",
+  "crypto.subtle",
+  "createCipheriv",
+  ".wasm",
+  "sourceMappingURL"
+]) {
   if (source.includes(marker)) throw new Error(`The public loader contains forbidden implementation marker: ${marker}`);
 }
-if (info.size > 50_000) throw new Error(`The public loader exceeds the 50 KB uncompressed budget: ${info.size} bytes.`);
+if (info.size > 6_500) throw new Error(`The endpoint-only loader exceeds the 6.5 KB uncompressed budget: ${info.size} bytes.`);
 if (!source.includes("mirror.webmcp.site_manifest.v1")) throw new Error("The loader is missing the manifest protocol.");
 if (!source.includes("mirror.webmcp.tool_call.v1")) throw new Error("The loader is missing the tool-call protocol.");
 if (source !== pinnedSource) throw new Error("The Vercel example's pinned loader does not match the reviewed package build.");
-console.log(`Public one-line loader gate passed: ${info.size.toLocaleString("en-US")} bytes, no SDK, WASM, source map, or secret configuration.`);
+console.log(`Public one-line loader gate passed: ${info.size.toLocaleString("en-US")} bytes, endpoint transport only, no crypto runtime, SDK, WASM, source map, or secret configuration.`);
