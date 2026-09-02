@@ -21,7 +21,7 @@ for (const marker of [
 ]) {
   if (source.includes(marker)) throw new Error(`The public loader contains forbidden implementation marker: ${marker}`);
 }
-if (info.size > 6_500) throw new Error(`The endpoint-only loader exceeds the 6.5 KB uncompressed budget: ${info.size} bytes.`);
+if (info.size > 7_000) throw new Error(`The endpoint-only loader exceeds the 7 KB uncompressed budget: ${info.size} bytes.`);
 if (!source.includes("mirror.webmcp.site_manifest.v1")) throw new Error("The loader is missing the manifest protocol.");
 if (!source.includes("mirror.webmcp.tool_call.v1")) throw new Error("The loader is missing the tool-call protocol.");
 if (source !== pinnedSource) throw new Error("The Vercel example's pinned loader does not match the reviewed package build.");

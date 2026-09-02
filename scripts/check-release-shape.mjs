@@ -4,11 +4,22 @@ import { resolve } from "node:path";
 const root = resolve(import.meta.dirname, "..");
 const required = [
   ".github/workflows/ci.yml",
+  "CHANGELOG.md",
   "CHALLENGE_SUBMISSION.md",
+  "CONTRIBUTING.md",
   "LICENSE",
   "SECURITY.md",
   "docs/ARCHITECTURE.md",
+  "docs/AUTHENTICATION.md",
+  "docs/COMPATIBILITY.md",
+  "docs/DEPLOYMENT.md",
   "docs/PUBLIC_PRIVATE_BOUNDARY.md",
+  "docs/PROTOCOL.md",
+  "docs/QUICKSTART.md",
+  "docs/TROUBLESHOOTING.md",
+  "docs/USING_WITH_A_BROWSER_AGENT.md",
+  "schemas/protocol-v1.schema.json",
+  "schemas/example-site-manifest.json",
   "src/model-context.js",
   "src/loader.js",
   "src/auto.js",
@@ -25,6 +36,7 @@ const manifest = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"
 if (manifest.private !== true) throw new Error("The package publish lock must remain enabled before owner approval.");
 if (manifest.dependencies || manifest.peerDependencies) throw new Error("The public package must remain standalone.");
 if (manifest.exports?.["./loader"]?.default !== "./src/loader.js") throw new Error("The loader export is missing.");
+if (!manifest.files.includes("schemas/protocol-v1.schema.json")) throw new Error("The protocol schema is missing from the package.");
 if (manifest.exports?.["./context"] || manifest.files.includes("src/runtime.js") || manifest.files.includes("src/context.js")) {
   throw new Error("The public package must contain only the endpoint adapter, not the internal browser runtime.");
 }

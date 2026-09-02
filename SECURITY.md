@@ -30,4 +30,4 @@ The private Cloudflare deployment adds server-stored opaque handles, signed Verc
 - This does not protect a compromised same-origin page, browser extension, device, operating system or application backend.
 - A private repository does not make shipped browser code secret. Everything delivered to a browser can be inspected.
 
-Report suspected issues privately to the Mirror Security team. Do not open a public issue before the repository is approved for publication.
+Report suspected issues privately through <https://mirrorsecurity.io/>. Do not put private records, active handles, approval tokens, credentials or provider responses in a public issue.

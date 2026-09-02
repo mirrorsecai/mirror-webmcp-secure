@@ -98,7 +98,13 @@ export function ProcurementDemo() {
         body: JSON.stringify(requirements)
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || `Protection failed with HTTP ${response.status}.`);
+      if (!response.ok) {
+        const code = typeof result.error === "object" ? result.error.code : result.error;
+        const reference = typeof result.error === "object" && result.error.requestId
+          ? ` Reference ${result.error.requestId}.`
+          : "";
+        throw new Error(`Protection failed (${code || `http_${response.status}`}).${reference}`);
+      }
       const descriptor = result.privacy;
       setRequirementsHandle(descriptor.handle);
       setEvents([{ label: "Buyer boundary", tool: "Mirror protect", args: "Private form → context-bound handle", state: "complete", result: descriptor.handle }]);
@@ -268,7 +274,7 @@ export function ProcurementDemo() {
       )}
 
       <section className="integration-section">
-        <div><h2>Add the boundary without shipping the private SDK.</h2><p>The public adapter is under 6 KB. It reads a same-origin manifest, joins the authenticated site session, and registers these tools. Handle state, keys, policy, and protected services remain behind the endpoints.</p></div>
+        <div><h2>Add the boundary without shipping the private SDK.</h2><p>The public adapter is under 7 KB. It reads a same-origin manifest, joins the authenticated site session, and registers these tools. Handle state, keys, policy, and protected services remain behind the endpoints.</p></div>
         <pre><code>{`<script defer
   src="/mirror-webmcp-v1.js"
   data-mirror-webmcp

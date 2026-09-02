@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { installWebMcpLoader } from "../src/loader.js";
+import { installWebMcpLoader, MirrorWebMcpRequestError } from "../src/loader.js";
 
 const origin = "https://shop.example";
 
@@ -178,5 +178,42 @@ test("approval-gated tool fails closed when the user declines", async () => {
   await assert.rejects(
     registered.get("catalog.search_private").execute({ queryHandle: "mirrorh_server_17" }),
     /approval is required/
+  );
+});
+
+test("endpoint failures expose only a safe stage, code, and request reference", async () => {
+  const registered = new Map();
+  const fetcher = async (url) => {
+    if (url.endsWith("mirror-webmcp.json")) return response(manifest());
+    if (url.endsWith("/context")) return response({ schema: "mirror.webmcp.session.v1", sessionId: "session-7" });
+    if (url.endsWith("/search")) return response({
+      schema: "mirror.webmcp.error.v1",
+      error: {
+        code: "protected_service_unavailable",
+        stage: "protected_inference",
+        requestId: "req_public_17",
+        retryable: true
+      }
+    }, 503);
+    throw new Error(`Unexpected URL: ${url}`);
+  };
+  await installWebMcpLoader({
+    siteId: "mirror_site_demo",
+    origin,
+    fetcher,
+    modelContext: { registerTool(tool) { registered.set(tool.name, tool); } }
+  });
+
+  await assert.rejects(
+    registered.get("catalog.search_private").execute({ queryHandle: "mirrorh_server_17" }),
+    (error) => {
+      assert.equal(error instanceof MirrorWebMcpRequestError, true);
+      assert.equal(error.code, "protected_service_unavailable");
+      assert.equal(error.stage, "protected_inference");
+      assert.equal(error.requestId, "req_public_17");
+      assert.equal(error.retryable, true);
+      assert.doesNotMatch(error.message, /mirrorh_server_17/);
+      return true;
+    }
   );
 });

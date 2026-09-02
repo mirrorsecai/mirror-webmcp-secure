@@ -69,7 +69,11 @@ test("same-origin endpoint path creates a handle, runs a tool, and rejects sessi
     body: JSON.stringify(call)
   }));
   assert.equal(replayResponse.status, 400);
-  assert.match((await replayResponse.json()).error, /context mismatch/);
+  const replayError = await replayResponse.json();
+  assert.equal(replayError.schema, "mirror.webmcp.error.v1");
+  assert.equal(replayError.error.code, "context_mismatch");
+  assert.equal(replayError.error.stage, "tool:procurement.find_private_matches");
+  assert.match(replayError.error.requestId, /^req_[a-f0-9]{20}$/);
 });
 
 test("localhost HTTP session cookie remains browser-usable without weakening HTTPS", async () => {
@@ -122,7 +126,7 @@ test("release endpoint requires approval bound to the exact proposal handle", as
     body: JSON.stringify(baseCall)
   }));
   assert.equal(withoutApproval.status, 400);
-  assert.equal((await withoutApproval.json()).error, "approval_required");
+  assert.equal((await withoutApproval.json()).error.code, "approval_required");
 
   const approvalResponse = await approvePost(new Request(`${origin}/api/mirror/approve`, {
     method: "POST",
@@ -147,7 +151,7 @@ test("release endpoint requires approval bound to the exact proposal handle", as
     })
   }));
   assert.equal(swapped.status, 400);
-  assert.equal((await swapped.json()).error, "approval_arguments_mismatch");
+  assert.equal((await swapped.json()).error.code, "approval_arguments_mismatch");
 
   const released = await toolPost(new Request(`${origin}/api/mirror/tool`, {
     method: "POST",

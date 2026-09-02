@@ -1,7 +1,8 @@
 import { issueApproval } from "../../../../lib/approval-token.js";
-import { DEMO_USER_ID, SITE_ID, assertSameOrigin, readSession } from "../../../../lib/server-context.js";
+import { SITE_ID, applicationUserId, assertSameOrigin, readSession } from "../../../../lib/server-context.js";
 import { PROCUREMENT_TOOLS } from "../../../../lib/tool-names.js";
 import { proxyMirrorGateway } from "../../../../lib/mirror-gateway-proxy.js";
+import { publicErrorResponse } from "../../../../lib/public-error.js";
 
 export const runtime = "nodejs";
 
@@ -22,7 +23,7 @@ export async function POST(request) {
       siteId: SITE_ID,
       origin,
       sessionId,
-      userId: DEMO_USER_ID,
+      userId: applicationUserId(request),
       tool: value.tool,
       arguments: value.arguments
     });
@@ -30,8 +31,7 @@ export async function POST(request) {
       headers: { "Cache-Control": "private, no-store" }
     });
   } catch (error) {
-    const code = error instanceof Error ? error.message : "approval_failed";
-    return Response.json({ error: /^[a-z0-9_-]{1,96}$/i.test(code) ? code : "approval_failed" }, { status: 400 });
+    return publicErrorResponse(error, { stage: "approval" });
   }
 }
 

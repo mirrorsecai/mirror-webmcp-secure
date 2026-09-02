@@ -5,6 +5,20 @@ export const WEBMCP_TOOL_CALL_SCHEMA = "mirror.webmcp.tool_call.v1";
 export const WEBMCP_TOOL_RESULT_SCHEMA = "mirror.webmcp.tool_result.v1";
 export const WEBMCP_APPROVAL_REQUEST_SCHEMA = "mirror.webmcp.approval_request.v1";
 export const WEBMCP_APPROVAL_SCHEMA = "mirror.webmcp.approval.v1";
+export const WEBMCP_ERROR_SCHEMA = "mirror.webmcp.error.v1";
+
+export class MirrorWebMcpRequestError extends Error {
+  constructor({ code, status, stage, requestId, retryable = false }) {
+    const reference = requestId ? ` Reference ${requestId}.` : "";
+    super(`Mirror WebMCP ${stage} request failed (${code}).${reference}`);
+    this.name = "MirrorWebMcpRequestError";
+    this.code = code;
+    this.status = status;
+    this.stage = stage;
+    this.requestId = requestId;
+    this.retryable = retryable;
+  }
+}
 
 /**
  * Register endpoint-backed WebMCP Site Tools from a same-origin manifest.
@@ -30,13 +44,13 @@ export async function installWebMcpLoader(options = {}) {
   const manifest = validateManifest(await fetchJson(fetcher, manifestUrl, {
     credentials: "same-origin",
     headers: { Accept: "application/json" }
-  }), { siteId, origin });
+  }, "manifest"), { siteId, origin });
 
   const contextUrl = sameOriginUrl(manifest.contextEndpoint, origin, "contextEndpoint");
   validateBootstrap(await fetchJson(fetcher, contextUrl, {
     credentials: "same-origin",
     headers: { Accept: "application/json", "X-Mirror-Site": siteId }
-  }));
+  }, "session"));
   const nativeModelContext = resolveModelContext(
     options.modelContext,
     options.document?.modelContext ?? globalThis.document?.modelContext,
@@ -120,7 +134,7 @@ function endpointTool({ tool, siteId, origin, fetcher, approvalEndpoint, approva
             arguments: args
           }),
           signal: call?.signal
-        }));
+        }, "approval"));
         approvalToken = approvalResult.approvalToken;
       }
       dispatch("mirror:webmcp-call", Object.freeze({ tool: tool.name, state: "running" }));
@@ -141,11 +155,15 @@ function endpointTool({ tool, siteId, origin, fetcher, approvalEndpoint, approva
             ...(approvalToken ? { approvalToken } : {})
           }),
           signal: call?.signal
-        }));
+        }, `tool:${tool.name}`));
         dispatch("mirror:webmcp-call", Object.freeze({ tool: tool.name, state: "complete" }));
         return result.value;
       } catch (error) {
-        dispatch("mirror:webmcp-call", Object.freeze({ tool: tool.name, state: "failed" }));
+        dispatch("mirror:webmcp-call", Object.freeze({
+          tool: tool.name,
+          state: "failed",
+          ...safeDiagnostic(error)
+        }));
         throw error;
       }
     }
@@ -197,23 +215,42 @@ function validateApproval(value) {
   return value;
 }
 
-async function fetchJson(fetcher, url, init) {
+async function fetchJson(fetcher, url, init, stage) {
   const response = await fetcher(url, init);
   let value;
   try {
     value = await response.json();
   } catch {
-    throw new Error(`Mirror WebMCP endpoint returned non-JSON (HTTP ${response.status}).`);
+    throw new MirrorWebMcpRequestError({
+      code: "non_json_response",
+      status: response.status,
+      stage,
+      requestId: response.headers?.get?.("x-request-id")
+    });
   }
-  if (!response.ok) throw new Error(safeRemoteError(value, response.status));
+  if (!response.ok) throw safeRemoteError(value, response, stage);
   return value;
 }
 
-function safeRemoteError(value, status) {
-  const code = typeof value?.error === "string" && /^[a-z0-9_.-]{1,96}$/i.test(value.error)
-    ? value.error
-    : `http_${status}`;
-  return `Mirror WebMCP request failed (${code}).`;
+function safeRemoteError(value, response, stage) {
+  const remote = typeof value?.error === "object" ? value.error : value;
+  return new MirrorWebMcpRequestError({
+    code: safeToken(remote?.code ?? value?.error) ?? `http_${response.status}`,
+    status: response.status,
+    stage: safeToken(remote?.stage ?? value?.stage) ?? stage,
+    requestId: safeToken(remote?.requestId ?? value?.requestId ?? response.headers?.get?.("x-request-id")),
+    retryable: remote?.retryable === true || value?.retryable === true
+  });
+}
+
+function safeToken(value) {
+  return typeof value === "string" && /^[a-z0-9_.:-]{1,96}$/i.test(value) ? value : undefined;
+}
+
+function safeDiagnostic(error) {
+  return error instanceof MirrorWebMcpRequestError
+    ? Object.freeze({ code: error.code, stage: error.stage, requestId: error.requestId, retryable: error.retryable })
+    : Object.freeze({ code: "client_error", stage: "client", retryable: false });
 }
 
 function sameOriginUrl(value, origin, field) {

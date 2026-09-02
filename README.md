@@ -40,11 +40,11 @@ Try the current reference application at <https://mirror-webmcp-secure.vercel.ap
 
 The WebMCP privacy pattern does not depend on a particular model. A Site Tool can call deterministic application logic, a Vercel AI SDK agent, a Cloudflare Agent, or a protected Mirror service. The hosted demonstration can additionally route the bounded seller request through encrypted inference, but that is a second protection layer rather than the reason WebMCP is useful.
 
-## What this repository will publish
+## What this repository contains
 
-- An under 6 KB browser adapter that reads a same-origin manifest and registers imperative Site Tools.
+- An under 7 KB browser adapter that reads a same-origin manifest and registers imperative Site Tools.
 - A complete Next.js reference application with four tools, server-bound handles and approval gates.
-- A `create-mirror-webmcp` generator for a private-by-default starter.
+- A checked-in `create-mirror-webmcp` generator for a private-by-default Next.js reference site.
 - Unit, endpoint, build, browser-boundary and adversarial tests.
 - Architecture and site-owner integration guides.
 - The challenge description.
@@ -74,22 +74,40 @@ The adapter performs four jobs:
 
 All sensitive work remains behind those endpoints. A site identifier selects public configuration and is never treated as a credential.
 
-## Create a new site
+## Try it from source
 
-After publication:
+The generator is checked into this repository. It is not published on npm yet.
 
 ```sh
-npx create-mirror-webmcp my-private-site
-cd my-private-site
+git clone https://github.com/mirrorsecai/mirror-webmcp-secure.git
+cd mirror-webmcp-secure
+npm ci --ignore-scripts
+npm --prefix examples/private-procurement-vercel ci --ignore-scripts
+npm run release:check
+npm --prefix examples/private-procurement-vercel run dev
+```
+
+Open <http://localhost:4210>. You can inspect tool discovery, create a bound handle and run the browser-safe endpoint path. The seller-model step fails closed unless you configure a real server-side seller route. It never returns a synthetic success.
+
+To create a separate copy of the reference site from this checkout:
+
+```sh
+node packages/create-mirror-webmcp/bin/create-mirror-webmcp.mjs /tmp/my-private-site
+cd /tmp/my-private-site
 npm run check
 npm run dev
 ```
 
-Before publication, the checked-out generator can be tested directly:
+Read [the complete quick start](./docs/QUICKSTART.md) before adapting it to an existing application.
 
-```sh
-node packages/create-mirror-webmcp/bin/create-mirror-webmcp.mjs /tmp/my-private-site
-```
+## Choose an operating mode
+
+| Mode | Intended use | State and replay protection | Protected model call |
+| --- | --- | --- | --- |
+| Public reference | Local evaluation and integration development | Process-local example, not atomic across serverless instances | Developer supplies a server-side route |
+| Mirror hosted | Production evaluation | Server-held handles, per-session durable state and atomic approval consumption | Available behind the private Mirror service |
+
+The public repository is sufficient to understand, test and integrate the protocol. It intentionally does not contain the Mirror SDK, WASM, service credentials, keys or private gateway implementation. To evaluate the hosted path, use the [live application](https://mirror-webmcp-secure.vercel.app/) or contact Mirror through [Encrypted Token Factory](https://mirrorsecurity.io/etf/).
 
 ## Run the release gates
 
@@ -101,16 +119,30 @@ npm run release:check
 
 An ordinary browser uses the same endpoint flow for local QA. A supported ChatGPT built-in browser discovers the four tools natively.
 
+## Adapt it
+
+- [Quick start](./docs/QUICKSTART.md)
+- [Site-owner integration](./docs/SITE_OWNER_INTEGRATION.md)
+- [Protocol and error contract](./docs/PROTOCOL.md)
+- [Authentication boundary](./docs/AUTHENTICATION.md)
+- [Compatibility](./docs/COMPATIBILITY.md)
+- [Vercel and Cloudflare deployment](./docs/DEPLOYMENT.md)
+- [Troubleshooting](./docs/TROUBLESHOOTING.md)
+- [Using the site with a browser agent](./docs/USING_WITH_A_BROWSER_AGENT.md)
+- [Machine-readable protocol schema](./schemas/protocol-v1.schema.json)
+- [Changelog](./CHANGELOG.md)
+- [Contributing](./CONTRIBUTING.md)
+
 ## Security boundary
 
 Every server endpoint must repeat authentication, authorization, exact-schema, purpose, tool, expiry and release checks. Sensitive tools obtain a short-lived approval token bound to their exact arguments. The private Cloudflare deployment additionally stores handles server-side and consumes approvals atomically in a per-session Durable Object.
 
 The browser adapter improves the agent boundary. It does not replace application authentication, CSP, device security, output validation or semantic prompt-injection defenses. Read [SECURITY.md](./SECURITY.md) before adapting the reference implementation.
 
-## Release status
+## Package status
 
-The work tree, packages and new Cloudflare enforcement service remain private. Publication, deployment changes and the final Devpost submission require owner approval.
+The source repository and live reference application are public. The npm packages remain publish-locked, so use the checked-out source commands above. The hosted enforcement service and cryptographic runtime remain private services.
 
 ## License
 
-Apache License 2.0, subject to final release approval.
+Apache License 2.0.

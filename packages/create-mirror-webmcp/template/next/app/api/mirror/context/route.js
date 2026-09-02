@@ -1,12 +1,13 @@
 import {
-  DEMO_USER_ID,
   SITE_ID,
+  applicationUserId,
   assertSameOrigin,
   newSession,
   readSession,
   sessionCookie
 } from "../../../../lib/server-context.js";
 import { proxyMirrorGateway } from "../../../../lib/mirror-gateway-proxy.js";
+import { publicErrorResponse } from "../../../../lib/public-error.js";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,7 @@ export async function GET(request) {
       schema: "mirror.webmcp.session.v1",
       siteId: SITE_ID,
       sessionId,
-      userId: DEMO_USER_ID,
+      userId: applicationUserId(request),
       model: "user-controlled-agent"
     }, {
       headers: {
@@ -34,6 +35,6 @@ export async function GET(request) {
       }
     });
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : "Session bootstrap failed." }, { status: 403 });
+    return publicErrorResponse(error, { stage: "session", status: 403 });
   }
 }

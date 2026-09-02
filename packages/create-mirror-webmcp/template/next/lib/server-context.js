@@ -1,8 +1,19 @@
 import { randomUUID } from "node:crypto";
 
 export const SITE_ID = "mirror_site_procurement_demo";
-export const DEMO_USER_ID = "buyer-demo-user";
 export const SESSION_COOKIE = "mirror_webmcp_session";
+
+/**
+ * Reference-only identity adapter.
+ *
+ * Replace this function with the user id from a server-verified application
+ * session. Never accept the user id from tool arguments or an unsigned browser
+ * header. Keeping this as one function makes the production replacement
+ * explicit without coupling the example to an authentication framework.
+ */
+export function applicationUserId(_request) {
+  return "buyer-demo-user";
+}
 
 export function requestOrigin(request) {
   const parsed = new URL(request.url);

@@ -40,9 +40,25 @@ export interface WebMcpLoaderResult {
   invoke(name: string, args: Record<string, unknown>, options?: { signal?: AbortSignal }): Promise<unknown>;
 }
 
+export declare class MirrorWebMcpRequestError extends Error {
+  readonly code: string;
+  readonly status: number;
+  readonly stage: string;
+  readonly requestId?: string;
+  readonly retryable: boolean;
+  constructor(options: {
+    code: string;
+    status: number;
+    stage: string;
+    requestId?: string;
+    retryable?: boolean;
+  });
+}
+
 export declare const WEBMCP_SITE_MANIFEST_SCHEMA: "mirror.webmcp.site_manifest.v1";
 export declare const WEBMCP_APPROVAL_REQUEST_SCHEMA: "mirror.webmcp.approval_request.v1";
 export declare const WEBMCP_APPROVAL_SCHEMA: "mirror.webmcp.approval.v1";
 export declare const WEBMCP_TOOL_CALL_SCHEMA: "mirror.webmcp.tool_call.v1";
 export declare const WEBMCP_TOOL_RESULT_SCHEMA: "mirror.webmcp.tool_result.v1";
+export declare const WEBMCP_ERROR_SCHEMA: "mirror.webmcp.error.v1";
 export function installWebMcpLoader(options?: WebMcpLoaderOptions): Promise<WebMcpLoaderResult>;

@@ -14,7 +14,7 @@ ChatGPT built-in browser
                  |
                  | document.modelContext.registerTool()
                  v
-Under 6 KB same-origin adapter in the Vercel page
+Under 7 KB same-origin adapter in the Vercel page
   contains registration and request transport only
                  |
                  | authenticated /api/mirror/* request

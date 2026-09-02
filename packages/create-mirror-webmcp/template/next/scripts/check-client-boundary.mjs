@@ -41,7 +41,7 @@ for (const marker of forbidden) {
 }
 
 const loaderBytes = (await stat(loaderFile)).size;
-assert.equal(loaderBytes <= 6_500, true, `The endpoint-only loader exceeds 6.5 KB: ${loaderBytes} bytes.`);
+assert.equal(loaderBytes <= 7_000, true, `The endpoint-only loader exceeds 7 KB: ${loaderBytes} bytes.`);
 assert.equal(loaderCode.includes("crypto.subtle"), false, "A browser cryptographic runtime entered the public adapter.");
 assert.equal(browserCode.includes("mirror.webmcp.site_manifest.v1"), true, "The public loader manifest protocol is missing.");
 

@@ -5,21 +5,24 @@ import { createSellerHandoff } from "../../../../lib/handoff.js";
 import { verifyProposalToken } from "../../../../lib/proposal-token.js";
 import { runSellerAgent } from "../../../../lib/seller-agent.js";
 import { openServerValue, protectServerValue } from "../../../../lib/server-handle.js";
-import { DEMO_USER_ID, SITE_ID, assertSameOrigin, readSession } from "../../../../lib/server-context.js";
+import { SITE_ID, applicationUserId, assertSameOrigin, readSession } from "../../../../lib/server-context.js";
 import { PROCUREMENT_TOOLS } from "../../../../lib/tool-names.js";
 import { proxyMirrorGateway } from "../../../../lib/mirror-gateway-proxy.js";
+import { publicErrorResponse } from "../../../../lib/public-error.js";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(request) {
+  let stage = "tool";
   try {
     const gateway = await proxyMirrorGateway(request);
     if (gateway) return gateway;
     const origin = assertSameOrigin(request);
     const sessionId = readSession(request);
     const call = validateCall(await request.json());
-    const context = { origin, sessionId, userId: DEMO_USER_ID };
+    stage = `tool:${call.tool}`;
+    const context = { origin, sessionId, userId: applicationUserId(request) };
     if ([PROCUREMENT_TOOLS.release, PROCUREMENT_TOOLS.accept].includes(call.tool)) {
       verifyApproval(call.approvalToken, {
         siteId: SITE_ID,
@@ -36,7 +39,7 @@ export async function POST(request) {
       headers: { "Cache-Control": "private, no-store" }
     });
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : "Tool call failed." }, { status: 400 });
+    return publicErrorResponse(error, { stage });
   }
 }
 

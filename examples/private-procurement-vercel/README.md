@@ -64,3 +64,7 @@ npm run check
 This runs endpoint and policy tests, a production build and a browser-bundle audit. The audit fails if a private SDK marker, Mirror client, WASM, source map, secret name or seller rule enters browser assets.
 
 This example assumes trusted same-origin code. Before adapting it to a real transaction, replace the demo user with application authentication and add an authoritative idempotent commit ledger.
+
+The authentication replacement point is `applicationUserId` in `lib/server-context.js`. It must read a server-verified first-party session. Never replace it with a user identifier supplied by tool arguments or an unsigned browser header.
+
+Endpoint failures follow `mirror.webmcp.error.v1`. They expose a safe code, stage and request reference without returning arguments, handles, tokens, provider bodies or stack traces. See [the protocol](../../docs/PROTOCOL.md) and [troubleshooting guide](../../docs/TROUBLESHOOTING.md).

@@ -1,6 +1,6 @@
 import { createHash, createHmac, randomUUID } from "node:crypto";
 
-import { DEMO_USER_ID, assertSameOrigin } from "./server-context.js";
+import { applicationUserId, assertSameOrigin } from "./server-context.js";
 
 export function mirrorGatewayConfigured() {
   return Boolean(process.env.MIRROR_WEBMCP_GATEWAY_URL && process.env.MIRROR_WEBMCP_GATEWAY_SECRET);
@@ -33,7 +33,7 @@ export async function proxyMirrorGateway(request) {
       Cookie: request.headers.get("cookie") || "",
       "X-Mirror-Site": request.headers.get("x-mirror-site") || "",
       "X-Mirror-Original-Origin": originalOrigin,
-      "X-Mirror-Authenticated-User": DEMO_USER_ID,
+      "X-Mirror-Authenticated-User": applicationUserId(request),
       "X-Mirror-Proxy-Timestamp": timestamp,
       "X-Mirror-Proxy-Nonce": nonce,
       "X-Mirror-Proxy-Signature": signature

@@ -39,7 +39,7 @@ The person contributes private intent. The agent contributes planning and tool u
 ## Technical implementation
 
 - Four imperative tools registered with `document.modelContext.registerTool()`.
-- An under 6 KB same-origin browser adapter.
+- An under 7 KB same-origin browser adapter.
 - No browser-side handle cryptography, private SDK, WASM, service key or seller policy.
 - Context-bound, expiring server handles.
 - Exact JSON schemas that reject unexpected and known private fields.

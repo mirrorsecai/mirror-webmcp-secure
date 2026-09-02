@@ -1,7 +1,8 @@
 import { protectServerValue } from "../../../../lib/server-handle.js";
-import { DEMO_USER_ID, assertSameOrigin, readSession } from "../../../../lib/server-context.js";
+import { applicationUserId, assertSameOrigin, readSession } from "../../../../lib/server-context.js";
 import { PROCUREMENT_TOOLS } from "../../../../lib/tool-names.js";
 import { proxyMirrorGateway } from "../../../../lib/mirror-gateway-proxy.js";
+import { publicErrorResponse } from "../../../../lib/public-error.js";
 
 export const runtime = "nodejs";
 
@@ -15,7 +16,7 @@ export async function POST(request) {
     const descriptor = protectServerValue(requirements, {
       origin,
       sessionId,
-      userId: DEMO_USER_ID,
+      userId: applicationUserId(request),
       kind: "buyer-requirements",
       purpose: "private-procurement",
       allowedTools: [PROCUREMENT_TOOLS.find],
@@ -32,7 +33,7 @@ export async function POST(request) {
       headers: { "Cache-Control": "private, no-store" }
     });
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : "Protection failed." }, { status: 400 });
+    return publicErrorResponse(error, { stage: "protection" });
   }
 }
 

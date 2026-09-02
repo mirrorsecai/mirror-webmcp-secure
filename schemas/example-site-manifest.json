@@ -1,0 +1,44 @@
+{
+  "schema": "mirror.webmcp.site_manifest.v1",
+  "siteId": "mirror_site_example",
+  "allowedOrigins": ["https://app.example.com"],
+  "contextEndpoint": "/api/mirror/context",
+  "approvalEndpoint": "/api/mirror/approve",
+  "packs": [
+    {
+      "name": "records.private",
+      "tools": [
+        {
+          "name": "records.check_private",
+          "title": "Check a private record",
+          "description": "Run the approved check without returning the underlying private record.",
+          "endpoint": "/api/mirror/tool",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "recordHandle": { "type": "string" }
+            },
+            "required": ["recordHandle"],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "records.release_result",
+          "title": "Release the result",
+          "description": "Release only the approved result from a private check.",
+          "endpoint": "/api/mirror/tool",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "resultHandle": { "type": "string" }
+            },
+            "required": ["resultHandle"],
+            "additionalProperties": false
+          },
+          "requiresApproval": true,
+          "approvalSummary": "Release this result to the agent"
+        }
+      ]
+    }
+  ]
+}
