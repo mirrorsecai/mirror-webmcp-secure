@@ -53,3 +53,32 @@ test("Vercel proxy signs the method, path, origin, nonce, timestamp, and body", 
     else process.env.MIRROR_WEBMCP_GATEWAY_SECRET = previousSecret;
   }
 });
+
+test("Vercel proxy rejects a cross-origin request before forwarding", async () => {
+  const previousUrl = process.env.MIRROR_WEBMCP_GATEWAY_URL;
+  const previousSecret = process.env.MIRROR_WEBMCP_GATEWAY_SECRET;
+  process.env.MIRROR_WEBMCP_GATEWAY_URL = "https://gateway.example";
+  process.env.MIRROR_WEBMCP_GATEWAY_SECRET = "test-gateway-secret";
+  let forwarded = false;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    forwarded = true;
+    return Response.json({});
+  };
+  try {
+    const request = new Request("https://buyer.example/api/mirror/context", {
+      headers: {
+        Origin: "https://lookalike.example",
+        "X-Mirror-Site": "mirror_site_procurement_demo"
+      }
+    });
+    await assert.rejects(() => proxyMirrorGateway(request), /Cross-origin request denied/);
+    assert.equal(forwarded, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (previousUrl === undefined) delete process.env.MIRROR_WEBMCP_GATEWAY_URL;
+    else process.env.MIRROR_WEBMCP_GATEWAY_URL = previousUrl;
+    if (previousSecret === undefined) delete process.env.MIRROR_WEBMCP_GATEWAY_SECRET;
+    else process.env.MIRROR_WEBMCP_GATEWAY_SECRET = previousSecret;
+  }
+});

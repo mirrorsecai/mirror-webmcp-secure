@@ -1,6 +1,6 @@
 import { createHash, createHmac, randomUUID } from "node:crypto";
 
-import { DEMO_USER_ID, requestOrigin } from "./server-context.js";
+import { DEMO_USER_ID, assertSameOrigin } from "./server-context.js";
 
 export function mirrorGatewayConfigured() {
   return Boolean(process.env.MIRROR_WEBMCP_GATEWAY_URL && process.env.MIRROR_WEBMCP_GATEWAY_SECRET);
@@ -17,7 +17,7 @@ export async function proxyMirrorGateway(request) {
   if (body.byteLength > 16_384) throw new Error("Mirror gateway request is too large.");
   const timestamp = String(Date.now());
   const nonce = randomUUID();
-  const originalOrigin = requestOrigin(request);
+  const originalOrigin = assertSameOrigin(request);
   const pathname = incoming.pathname;
   const bodyDigest = createHash("sha256").update(body).digest("base64url");
   const signatureInput = [timestamp, nonce, request.method, pathname, originalOrigin, bodyDigest].join("\n");
