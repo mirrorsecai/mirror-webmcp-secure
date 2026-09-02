@@ -126,7 +126,7 @@ This layer assumes trusted same-origin page code. It does not protect a compromi
 
 ## Release status
 
-The packages remain publish-locked until the final native ChatGPT acceptance test and owner approval are complete. See [RELEASE.md](./RELEASE.md).
+The audited source repository and hosted reference application are public. The npm packages remain publish-locked until the final native ChatGPT acceptance test and owner approval are complete.
 
 ## License
 
