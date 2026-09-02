@@ -1,0 +1,65 @@
+{
+  "name": "@mirror/webmcp-secure",
+  "version": "0.2.0-rc.1",
+  "description": "A framework-neutral privacy boundary for WebMCP applications and tools.",
+  "private": true,
+  "license": "Apache-2.0",
+  "homepage": "https://webmcp-private-lab.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mirrorsecai/mirror-webmcp-secure.git"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./context": {
+      "types": "./src/context.d.ts",
+      "default": "./src/context.js"
+    },
+    "./loader": {
+      "types": "./src/loader.d.ts",
+      "default": "./src/loader.js"
+    },
+    "./auto": {
+      "default": "./src/auto.js"
+    }
+  },
+  "files": [
+    "src",
+    "README.md",
+    "SECURITY.md"
+  ],
+  "scripts": {
+    "test": "node scripts/test-installed-package.mjs",
+    "test:source": "node --test tests/*.test.mjs",
+    "secrets": "node scripts/check-secrets.mjs",
+    "shape": "node scripts/check-release-shape.mjs",
+    "build:loader": "esbuild src/auto.js --bundle --format=iife --platform=browser --target=es2022 --minify --legal-comments=none --outfile=artifacts/public/v1.js",
+    "loader:check": "npm run build:loader && node scripts/check-loader-build.mjs",
+    "pack:check": "npm_config_cache=/tmp/mirror-webmcp-secure-npm-cache npm pack --dry-run",
+    "check:source": "npm run secrets && npm run test:source && npm run shape && npm run pack:check && npm run loader:check",
+    "procurement:test": "npm --prefix examples/private-procurement-vercel test",
+    "procurement:check": "npm --prefix examples/private-procurement-vercel run check",
+    "starter:sync": "node scripts/sync-create-template.mjs",
+    "starter:test": "npm --prefix packages/create-mirror-webmcp test",
+    "starter:pack": "npm --prefix packages/create-mirror-webmcp run pack:check",
+    "starter:packed": "node scripts/test-packed-starter.mjs",
+    "starter:check": "npm run starter:sync && npm run starter:test && npm run starter:pack && npm run starter:packed",
+    "public:export": "node scripts/export-public-release.mjs",
+    "release:check": "npm run check:source && npm test && npm run procurement:check && npm run starter:check"
+  },
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

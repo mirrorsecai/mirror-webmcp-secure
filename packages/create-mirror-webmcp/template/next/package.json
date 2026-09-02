@@ -1,0 +1,28 @@
+{
+  "name": "__PROJECT_NAME__",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev -p 4210",
+    "build": "next build",
+    "start": "next start -p 4210",
+    "test": "node --test tests/*.test.mjs",
+    "qa": "node scripts/browser-qa.mjs",
+    "audit:client": "node scripts/check-client-boundary.mjs",
+    "check": "npm test && npm run build && npm run audit:client"
+  },
+  "dependencies": {
+    "ai": "^6.0.0",
+    "next": "^16.2.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

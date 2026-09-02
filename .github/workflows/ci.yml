@@ -1,0 +1,24 @@
+name: release-gates
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: examples/private-procurement-vercel/package-lock.json
+      - run: npm install --ignore-scripts
+      - run: npm --prefix examples/private-procurement-vercel ci --ignore-scripts
+      - run: npm run release:check
