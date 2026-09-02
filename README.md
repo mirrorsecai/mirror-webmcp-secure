@@ -47,7 +47,7 @@ The WebMCP privacy pattern does not depend on a particular model. A Site Tool ca
 - A `create-mirror-webmcp` generator for a private-by-default starter.
 - Unit, endpoint, build, browser-boundary and adversarial tests.
 - Architecture and site-owner integration guides.
-- The challenge description and recording script.
+- The challenge description.
 
 The public adapter contains no handle cryptography, Mirror SDK, FHE client, WASM, model credential, decryption key, seller policy or privileged receipt implementation. The complete reference app remains runnable from the published source with its local server implementation; optional hosted Mirror capabilities are reached through narrow server endpoints.
 
