@@ -52,7 +52,7 @@ Try the live reference application at <https://mirror-webmcp-secure.vercel.app/>
 - `docs/SITE_OWNER_INTEGRATION.md`: integration choices and server rules.
 - `CHALLENGE_SUBMISSION.md`: submission narrative and recording sequence.
 
-The public browser code does not include the private Mirror SDK, Mirror WASM, model credentials, decryption keys, seller policy, or privileged service implementation.
+The browser receives only the WebMCP integration layer, opaque handles, and approved results. Cryptographic execution and policy enforcement remain server-side.
 
 ## Create a site
 
